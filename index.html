@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pitch Match Clone</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --accent: #00ff88;
+            --text: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 350px;
+        }
+
+        h1 { margin-top: 0; font-size: 1.5rem; color: var(--accent); }
+
+        .controls { margin: 20px 0; }
+
+        button {
+            background: var(--accent);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin: 5px;
+        }
+
+        button:disabled { background: #555; cursor: not-allowed; }
+        button:hover { opacity: 0.9; }
+
+        input[type=range] {
+            width: 100%;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+
+        .result {
+            font-size: 1.1rem;
+            margin-top: 15px;
+            min-height: 1.5em;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>PITCH MATCH</h1>
+    <p>Listen to the target, then match it!</p>
+
+    <div class="controls">
+        <button id="playTarget">1. Play Target Pitch</button>
+    </div>
+
+    <div id="gameArea" class="hidden">
+        <input type="range" id="pitchSlider" min="220" max="880" value="440">
+        <br>
+        <button id="playYourPitch">2. Preview Your Pitch</button>
+        <button id="submitBtn">3. Check Result</button>
+    </div>
+
+    <div id="resultDisplay" class="result"></div>
+    <button id="nextRound" class="hidden">Next Round</button>
+</div>
+
+<script>
+    let audioCtx;
+    let targetFreq;
+    let oscillator;
+    
+    const playTargetBtn = document.getElementById('playTarget');
+    const playYourBtn = document.getElementById('playYourPitch');
+    const submitBtn = document.getElementById('submitBtn');
+    const nextBtn = document.getElementById('nextRound');
+    const slider = document.getElementById('pitchSlider');
+    const resultDisplay = document.getElementById('resultDisplay');
+    const gameArea = document.getElementById('gameArea');
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    function playTone(freq, duration) {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function startNewRound() {
+        // Random frequency between 220Hz (A3) and 880Hz (A5)
+        targetFreq = Math.floor(Math.random() * (880 - 220) + 220);
+        resultDisplay.innerText = "";
+        gameArea.classList.add('hidden');
+        nextBtn.classList.add('hidden');
+        playTargetBtn.disabled = false;
+    }
+
+    playTargetBtn.addEventListener('click', () => {
+        playTone(targetFreq, 1.5);
+        gameArea.classList.remove('hidden');
+    });
+
+    playYourBtn.addEventListener('click', () => {
+        playTone(parseFloat(slider.value), 1.0);
+    });
+
+    submitBtn.addEventListener('click', () => {
+        const userFreq = parseFloat(slider.value);
+        const diff = Math.abs(userFreq - targetFreq).toFixed(1);
+        const accuracy = Math.max(0, 100 - (diff / targetFreq * 100)).toFixed(1);
+
+        resultDisplay.innerHTML = `
+            Target: ${targetFreq}Hz<br>
+            Yours: ${userFreq}Hz<br>
+            <strong>Accuracy: ${accuracy}%</strong>
+        `;
+        
+        nextBtn.classList.remove('hidden');
+    });
+
+    nextBtn.addEventListener('click', startNewRound);
+
+    // Initial Start
+    startNewRound();
+</script>
+
+</body>
+</html>
