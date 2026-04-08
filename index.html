@@ -32,15 +32,24 @@
         #sidebar {
             width: 200px; background: var(--panel);
             display: flex; flex-direction: column; align-items: center;
-            justify-content: center; border-right: 1px solid #222;
+            justify-content: space-between; border-right: 1px solid #222;
+            padding: 60px 0; /* Space for top/bottom labels */
+        }
+
+        .side-label-top {
+            font-size: 0.7rem; color: var(--text-dim); letter-spacing: 4px; font-weight: 800;
+        }
+
+        .side-label-bottom {
+            font-size: 1.5rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--text);
         }
 
         input[type=range].modern-vertical {
             -webkit-appearance: none;
-            width: 500px; height: 30px;
+            width: 450px; height: 30px;
             background: #222; border-radius: 15px;
             transform: rotate(270deg); cursor: pointer;
-            outline: none;
+            outline: none; margin: 0;
         }
 
         input[type=range].modern-vertical::-webkit-slider-thumb {
@@ -54,12 +63,8 @@
         
         .wave-panel { flex: 1; display: flex; align-items: center; justify-content: center; border-right: 1px solid #111; }
         #target-panel { background: #050505; transition: background 0.3s; }
-        #user-panel { background: #080808; }
-
-        #countdown-container {
-            position: absolute; top: 30px; right: 40px; text-align: right;
-        }
-
+        
+        #countdown-container { position: absolute; top: 30px; right: 40px; text-align: right; }
         #countdown { font-size: 5rem; font-weight: 900; font-variant-numeric: tabular-nums; }
 
         #game-ui { position: absolute; left: 40px; top: 40px; z-index: 60; pointer-events: none; }
@@ -70,9 +75,10 @@
         .btn-action {
             background: white; color: black; border: none; padding: 18px 40px;
             font-weight: 800; border-radius: 4px; cursor: pointer; text-transform: uppercase;
-            transition: transform 0.1s;
+            transition: transform 0.1s; margin: 10px;
         }
 
+        .btn-secondary { background: transparent; color: white; border: 1px solid white; }
         .btn-action:active { transform: scale(0.95); }
         .btn-action:disabled { opacity: 0; pointer-events: none; }
 
@@ -94,9 +100,9 @@
 
 <div id="game-wrapper">
     <div id="sidebar">
-        <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 150px; letter-spacing: 2px;">FREQUENCY</div>
+        <div class="side-label-top">FREQUENCY</div>
         <input type="range" id="freq-slider" class="modern-vertical" min="200" max="1000" step="0.1" value="440">
-        <div style="font-size: 1.2rem; font-weight: 900; margin-top: 150px; font-variant-numeric: tabular-nums;" id="val-f">440Hz</div>
+        <div class="side-label-bottom" id="val-f">440Hz</div>
     </div>
 
     <div id="workspace">
@@ -121,8 +127,9 @@
     <div id="results-screen">
         <p style="color: var(--text-dim); letter-spacing: 4px;">MISSION COMPLETE</p>
         <h1 id="final-total" style="font-size: 8rem; margin: 10px 0;">0.0</h1>
-        <div style="display: flex; gap: 20px;">
-            <button class="btn-action" onclick="location.reload()">Home</button>
+        <div style="display: flex;">
+            <button class="btn-action" onclick="location.reload()">Play Again</button>
+            <button class="btn-action btn-secondary" onclick="goToHome()">Home</button>
         </div>
     </div>
 </div>
@@ -154,10 +161,12 @@
         document.getElementById('home-screen').style.display = 'none';
         document.getElementById('game-wrapper').style.visibility = 'visible';
         
-        // Continuous update listener
         document.getElementById('freq-slider').addEventListener('input', updateLivePitch);
-        
         startRound();
+    }
+
+    function goToHome() {
+        location.reload(); // Simplest way to reset audio context and return home
     }
 
     function startRound() {
@@ -166,17 +175,13 @@
         targetFreq = Math.floor(Math.random() * 600) + 250; 
         targetOsc.frequency.setValueAtTime(targetFreq, audioCtx.currentTime);
         
-        // Reset UI
         document.getElementById('target-panel').style.background = "#1a1a1a";
         document.getElementById('target-label').innerText = "TARGET TONE";
         document.getElementById('score-popup').innerText = "";
         document.getElementById('main-btn').innerText = "Submit Match";
         document.getElementById('main-btn').disabled = true;
 
-        // Silence User during memorization
         userGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
-
-        // Play Target
         targetGain.gain.setTargetAtTime(0.25, audioCtx.currentTime, 0.05);
 
         let startTime = Date.now();
@@ -188,8 +193,6 @@
                 clearInterval(timer);
                 targetGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
                 document.getElementById('target-panel').style.background = "#050505";
-                
-                // Switch to User Control
                 document.getElementById('main-btn').disabled = false;
                 updateLivePitch(); 
             }
@@ -202,7 +205,6 @@
         document.getElementById('val-f').innerText = Math.round(f) + "Hz";
         
         userOsc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.03);
-        // User tone is always on during the matching phase
         if (document.getElementById('main-btn').disabled === false) {
             userGain.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.05);
         }
@@ -212,14 +214,12 @@
         isRoundActive = false;
         document.getElementById('main-btn').disabled = true;
 
-        // Play both together for the comparison
         userGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.05);
         targetGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.05);
         
         const userFreq = document.getElementById('freq-slider').value;
         const dist = Math.abs(Math.log2(userFreq / targetFreq));
         
-        // Score 1.0 - 10.0
         let roundScore = Math.max(1, 10 - (dist * 25)); 
         roundScore = Math.round(roundScore * 10) / 10;
 
@@ -230,7 +230,6 @@
 
         const isLastRound = round >= 5;
         setTimeout(() => {
-            // Fade out audio
             targetGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
             userGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
             
